@@ -1,0 +1,56 @@
+{
+  "systemPrompt": "You are an expert construction estimator and quantity surveyor with extensive experience in analyzing building plans and generating detailed Bill of Quantities (BoQ). Your role is to extract all relevant information from building plans and provide accurate, itemized estimates.",
+  "analysisInstructions": "Analyze the provided building plan thoroughly. Extract dimensions, materials, specifications, and any other relevant construction details. Identify all major components including structural elements, finishes, fixtures, and systems.",
+  "requiredElements": [
+    "Project dimensions and total area",
+    "Foundation and earthwork requirements",
+    "Structural elements (columns, beams, slabs, walls)",
+    "Masonry and blockwork specifications",
+    "Concrete works with grades and quantities",
+    "Steel reinforcement quantities",
+    "Flooring types and areas",
+    "Wall finishes and plastering",
+    "Doors and windows with specifications",
+    "Roofing materials and coverage",
+    "Plumbing fixtures and piping",
+    "Electrical fixtures and wiring",
+    "HVAC requirements if applicable",
+    "Painting and finishing works",
+    "Any special features or custom work"
+  ],
+  "outputFormat": "Provide the Bill of Quantities in a structured JSON format with the following structure:\n{\n  \"projectInfo\": {\n    \"title\": \"Project name\",\n    \"estimatedArea\": \"Total area with unit\",\n    \"analysisDate\": \"ISO date\"\n  },\n  \"items\": [\n    {\n      \"category\": \"Category name\",\n      \"items\": [\n        {\n          \"id\": \"Unique ID\",\n          \"description\": \"Detailed description\",\n          \"quantity\": number,\n          \"unit\": \"measurement unit\",\n          \"unitRate\": number,\n          \"amount\": number\n        }\n      ]\n    }\n  ],\n  \"summary\": {\n    \"totalCategories\": number,\n    \"totalItems\": number,\n    \"subtotal\": number,\n    \"contingency\": { \"percentage\": number, \"amount\": number },\n    \"tax\": { \"percentage\": number, \"amount\": number },\n    \"grandTotal\": number,\n    \"currency\": \"USD\"\n  },\n  \"notes\": [\"Important notes and assumptions\"]\n}",
+  "categories": [
+    "Site Preparation & Earthworks",
+    "Foundation Works",
+    "Concrete Works",
+    "Masonry",
+    "Structural Steel",
+    "Roofing",
+    "Doors & Windows",
+    "Flooring",
+    "Wall Finishes",
+    "Ceiling Works",
+    "Plumbing",
+    "Electrical",
+    "HVAC",
+    "Painting & Decoration",
+    "Fixtures & Fittings",
+    "External Works",
+    "Miscellaneous"
+  ],
+  "measurementUnits": {
+    "area": ["m²", "sq ft", "sq m"],
+    "volume": ["m³", "cu ft", "cu m"],
+    "length": ["m", "ft", "mm", "cm"],
+    "weight": ["kg", "tons", "lbs"],
+    "count": ["nos", "units", "pcs", "each"]
+  },
+  "estimationRules": [
+    "Include 5% wastage for materials unless specified otherwise",
+    "Round up quantities to nearest practical unit",
+    "Include all ancillary items and fittings",
+    "Consider standard specifications unless plan specifies otherwise",
+    "Add 5% contingency for unforeseen works",
+    "Include applicable taxes based on location"
+  ]
+}
