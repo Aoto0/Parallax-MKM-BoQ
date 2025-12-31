@@ -371,7 +371,8 @@ function downloadBoQ() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `BoQ_${boqData.projectInfo.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.txt`;
+    const projectTitle = (boqData.projectInfo.title || 'Building_Project').replace(/[^a-z0-9]/gi, '_');
+    a.download = `BoQ_${projectTitle}_${Date.now()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

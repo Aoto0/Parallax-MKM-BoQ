@@ -2,8 +2,19 @@ const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
 
+// Use node-fetch for Node.js < 18, or built-in fetch for Node.js 18+
+let fetch;
+try {
+  fetch = globalThis.fetch || require('node-fetch');
+} catch (e) {
+  console.warn('Fetch not available. AI API calls will not work.');
+}
+
 // Load BoQ prompt configuration
 const boqPromptConfig = require('../config/boqPrompt.json');
+
+// Constants
+const DEFAULT_API_KEY_PLACEHOLDER = 'your_api_key_here';
 
 /**
  * Analyzes a building plan using AI and generates a Bill of Quantities (BoQ)
@@ -71,7 +82,7 @@ async function performAIAnalysis(fileData, fileType) {
   const apiKey = process.env.AI_API_KEY;
   
   // If no API key is provided, return mock data for demonstration
-  if (!apiKey || apiKey === 'your_api_key_here') {
+  if (!apiKey || apiKey === DEFAULT_API_KEY_PLACEHOLDER) {
     console.log('No AI API key configured, returning demo BoQ');
     return generateDemoBoQ();
   }
