@@ -1,195 +1,162 @@
-"""
-OpenAI GPT-4 service for processing PDF documents and extracting BOQ data.
-Includes mock functionality for testing without API access.
-"""
+import openai
 import json
-from typing import Dict, List, Any
-from openai import OpenAI
-from config import settings
+import re
 
 
 class OpenAIService:
-    """Service for interacting with OpenAI GPT-4 API."""
-    
-    def __init__(self):
-        """Initialize OpenAI client if API key is available."""
-        self.use_mock = settings.USE_MOCK_AI or not settings.has_openai_key
-        if not self.use_mock:
-            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        else:
-            self.client = None
-            print("⚠️  Running in MOCK mode - OpenAI API calls will be simulated")
-    
-    def extract_boq_from_pdf(self, pdf_text: str, filename: str) -> Dict[str, Any]:
+    """
+    A class to interact with OpenAI's API for extracting BoQ data from building plan text.
+    """
+
+    def __init__(self, api_key: str = None, model: str = "gpt-4"):
         """
-        Extract Bill of Quantities from PDF text using GPT-4.
-        
+        Initialize the OpenAIService with the provided API key and model (default: gpt-4).
+
         Args:
-            pdf_text: Extracted text content from PDF
-            filename: Original PDF filename
-            
-        Returns:
-            Dictionary containing BOQ data
+            api_key: The OpenAI API key for authentication.
+            model: The OpenAI language model to use (default: "gpt-4").
         """
-        if self.use_mock:
-            return self._mock_boq_extraction(filename)
-        
+        self.api_key = api_key
+        self.model = model
+
+        # Validate API key
+        if not self.api_key:
+            raise ValueError("OpenAI API key is missing. Please provide a valid API key.")
+
+        # Set the API key for OpenAI
+        openai.api_key = self.api_key
+
+    def generate_boq_prompt(self, extracted_text: str, filename: str) -> str:
+        """
+        Generate a structured prompt for BoQ extraction.
+
+        Args:
+            extracted_text: Text extracted from the building plan PDF.
+            filename: The name of the uploaded file (for context).
+
+        Returns:
+            A properly formatted prompt string for OpenAI.
+        """
+        return f"""
+        You are a highly accurate Bill of Quantities (BoQ) generation system.
+
+        Your task:
+        - Read the provided building plan text.
+        - Generate a BoQ as valid, strict JSON.
+
+        ----
+
+        ### Rules:
+        - Output only JSON. No explanations, comments, introductory or extra text.
+        - All keys must be enclosed in double quotes ("...").
+        - Ensure all numerical values use consistent floating-point precision (e.g., 25.0).
+
+        ----
+
+        ### BoQ Categories:
+        1. **Superstructure and Roof**
+           - Tiles, battens, brickwork, timber, and other structural tasks.
+        2. **First Fix**
+           - Carpentry, plumbing, electrical, and mechanical works.
+        3. **Plastering**
+           - Plasterboarding and skimming tasks.
+        4. **Second Fix**
+           - Door fittings, ironmongery, skirts, arcs, and final finishes.
+
+        ----
+
+        Building plan information from the file "{filename}":
+        {extracted_text}
+        """
+
+    @staticmethod
+    def clean_openai_response(response_content: str) -> str:
+        """
+        Cleans the raw OpenAI response to ensure it's valid JSON.
+
+        Args:
+            response_content: Raw response content from OpenAI.
+
+        Returns:
+            A cleaned JSON string.
+        """
+        # Use a regular expression to extract the JSON content from the response
+        json_match = re.search(r"\{.*\}", response_content, flags=re.DOTALL)
+        if json_match:
+            return json_match.group(0)
+        # Return raw content if JSON structure cannot be cleaned
+        return response_content
+
+    def extract_boq_from_pdf(self, extracted_text: str, filename: str) -> dict:
+        """
+        Extract BoQ data from the text extracted from a building plan PDF.
+
+        Args:
+            extracted_text: Text extracted from a building plan.
+            filename: The name of the uploaded building plan file.
+
+        Returns:
+            A structured dictionary with BoQ information.
+        """
+        print(f"Processing file: {filename}...")
+        print(f"Extracted text preview:\n{extracted_text[:500]}")  # Log the first 500 characters
+
+        if not extracted_text.strip():
+            raise ValueError("Extracted text is empty. Ensure the file is valid and readable.")
+
+        # Generate the prompt for OpenAI
+        prompt = self.generate_boq_prompt(extracted_text, filename)
+        print(f"Generated prompt:\n{prompt}")
+
         try:
-            # Create a structured prompt for BOQ extraction
-            messages = [
-                {
-                    "role": "system",
-                    "content": """You are an expert construction estimator specializing in Bill of Quantities (BOQ) extraction from building plans.
-                    
-Your task is to analyze construction documents and extract material quantities in a structured format.
-
-Return the data as a JSON object with the following structure:
-{
-    "project_name": "extracted or inferred project name",
-    "items": [
-        {
-            "item_no": "sequential number",
-            "description": "detailed description of the item",
-            "unit": "measurement unit (m², m³, m, kg, no., etc.)",
-            "quantity": "numeric quantity",
-            "category": "category (e.g., Earthwork, Concrete, Masonry, Steel, Finishing, etc.)"
-        }
-    ],
-    "summary": {
-        "total_items": "number of items",
-        "categories": ["list of unique categories"]
-    }
-}
-
-Be thorough and extract all quantifiable items from the document."""
-                },
-                {
-                    "role": "user",
-                    "content": f"Please extract the Bill of Quantities from the following construction document:\n\nFilename: {filename}\n\nContent:\n{pdf_text[:8000]}"  # Limit text to avoid token limits
-                }
-            ]
-            
-            # Call GPT-4 with function calling for structured output
-            response = self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=messages,
-                response_format={"type": "json_object"},
-                temperature=0.3,  # Lower temperature for more consistent extraction
-                max_tokens=2000
+            # Call OpenAI's ChatCompletion API
+            response = openai.ChatCompletion.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are an expert in BoQ generation for construction."},
+                    {"role": "user", "content": prompt}
+                ]
             )
-            
-            # Parse the response
-            result = json.loads(response.choices[0].message.content)
-            
-            # Add metadata
-            result["metadata"] = {
-                "source_file": filename,
-                "extraction_method": "GPT-4",
-                "mock": False
-            }
-            
-            return result
-            
+
+            # Debug response to verify if GPT-4 is responding correctly
+            print("Raw response received from GPT-4:")
+            print(json.dumps(response, indent=4))  # Pretty print full response for debugging
+
+            # Save raw response for deeper debugging
+            with open("debug_openai_raw_response.json", "w") as debug_file:
+                json.dump(response, debug_file, indent=4)
+
+            # Extract the content safely
+            choices = response.get("choices", [])
+            if not choices:
+                raise ValueError("No choices returned in OpenAI response.")
+
+            # Extracting the assistant's content
+            content = choices[0].get("message", {}).get("content", "")
+            if not content.strip():
+                raise ValueError("OpenAI API returned an empty content.")
+
+            print("Extracted Content from GPT-4:")
+            print(content)
+
+            # Clean the response and parse it as JSON
+            cleaned_content = self.clean_openai_response(content)
+            return json.loads(cleaned_content)
+
+        except openai.error.OpenAIError as e:
+            print(f"OpenAI API Error: {e}")
+            raise RuntimeError("OpenAI API error occurred.")
+
+        except json.JSONDecodeError as e:
+            print("Failed to decode GPT-4 response as JSON.")
+            print("Problematic content (if any):")
+            print(content)
+
+            # Save problematic content into a debug file for further review
+            with open("debug_openai_response.json", "w") as debug_file:
+                debug_file.write(content if content else "No content received.")
+            raise ValueError("JSON Decoding Issue: Check response structure for errors.")
+
         except Exception as e:
-            print(f"Error calling OpenAI API: {e}")
-            # Fallback to mock on error
-            return self._mock_boq_extraction(filename)
-    
-    def _mock_boq_extraction(self, filename: str) -> Dict[str, Any]:
-        """
-        Generate mock BOQ data for testing purposes.
-        
-        Args:
-            filename: Original PDF filename
-            
-        Returns:
-            Mock BOQ dictionary
-        """
-        return {
-            "project_name": f"Sample Project - {filename}",
-            "items": [
-                {
-                    "item_no": "1",
-                    "description": "Excavation for foundation",
-                    "unit": "m³",
-                    "quantity": "125.5",
-                    "category": "Earthwork"
-                },
-                {
-                    "item_no": "2",
-                    "description": "Plain Cement Concrete (PCC) 1:4:8",
-                    "unit": "m³",
-                    "quantity": "8.75",
-                    "category": "Concrete"
-                },
-                {
-                    "item_no": "3",
-                    "description": "Reinforced Cement Concrete (RCC) M25",
-                    "unit": "m³",
-                    "quantity": "45.20",
-                    "category": "Concrete"
-                },
-                {
-                    "item_no": "4",
-                    "description": "Steel reinforcement bars (TMT)",
-                    "unit": "kg",
-                    "quantity": "3500.00",
-                    "category": "Steel"
-                },
-                {
-                    "item_no": "5",
-                    "description": "Brick masonry in cement mortar 1:6",
-                    "unit": "m³",
-                    "quantity": "78.50",
-                    "category": "Masonry"
-                },
-                {
-                    "item_no": "6",
-                    "description": "Plaster 12mm thick, cement mortar 1:4",
-                    "unit": "m²",
-                    "quantity": "450.25",
-                    "category": "Finishing"
-                },
-                {
-                    "item_no": "7",
-                    "description": "Waterproofing membrane",
-                    "unit": "m²",
-                    "quantity": "95.00",
-                    "category": "Waterproofing"
-                },
-                {
-                    "item_no": "8",
-                    "description": "PVC plumbing pipes 100mm dia",
-                    "unit": "m",
-                    "quantity": "65.00",
-                    "category": "Plumbing"
-                },
-                {
-                    "item_no": "9",
-                    "description": "Electrical conduit PVC 20mm",
-                    "unit": "m",
-                    "quantity": "180.50",
-                    "category": "Electrical"
-                },
-                {
-                    "item_no": "10",
-                    "description": "Ceramic floor tiles 600x600mm",
-                    "unit": "m²",
-                    "quantity": "120.00",
-                    "category": "Finishing"
-                }
-            ],
-            "summary": {
-                "total_items": "10",
-                "categories": ["Earthwork", "Concrete", "Steel", "Masonry", "Finishing", "Waterproofing", "Plumbing", "Electrical"]
-            },
-            "metadata": {
-                "source_file": filename,
-                "extraction_method": "Mock",
-                "mock": True
-            }
-        }
-
-
-# Create a global service instance
-openai_service = OpenAIService()
+            print(f"Unexpected error: {e}")
+            raise RuntimeError(f"An unexpected error occurred: {e}")
