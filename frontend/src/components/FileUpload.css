@@ -1,0 +1,133 @@
+.file-upload-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.upload-zone {
+  border: 2px dashed #cbd5e0;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  background-color: #f7fafc;
+  cursor: pointer;
+}
+
+.upload-zone:hover {
+  border-color: #4299e1;
+  background-color: #ebf8ff;
+}
+
+.upload-zone.dragging {
+  border-color: #3182ce;
+  background-color: #bee3f8;
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.upload-zone h3 {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+  color: #2d3748;
+}
+
+.upload-zone p {
+  margin: 8px 0;
+  color: #718096;
+  font-size: 14px;
+}
+
+.browse-btn {
+  margin: 16px 0;
+  padding: 10px 24px;
+  background-color: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.browse-btn:hover {
+  background-color: #3182ce;
+}
+
+.file-info {
+  font-size: 12px;
+  color: #a0aec0;
+  margin-top: 12px;
+}
+
+.file-selected {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.file-icon {
+  font-size: 48px;
+  color: #48bb78;
+}
+
+.file-details {
+  text-align: center;
+}
+
+.file-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #2d3748;
+  word-break: break-word;
+}
+
+.file-details p {
+  margin: 0;
+  font-size: 14px;
+  color: #718096;
+}
+
+.file-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.upload-btn {
+  padding: 10px 24px;
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.upload-btn:hover {
+  background-color: #38a169;
+}
+
+.clear-btn {
+  padding: 10px 24px;
+  background-color: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clear-btn:hover {
+  background-color: #c53030;
+}
