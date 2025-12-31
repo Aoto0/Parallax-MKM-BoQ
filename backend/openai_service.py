@@ -71,7 +71,7 @@ Be thorough and extract all quantifiable items from the document."""
             
             # Call GPT-4 with function calling for structured output
             response = self.client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+                model=settings.OPENAI_MODEL,
                 messages=messages,
                 response_format={"type": "json_object"},
                 temperature=0.3,  # Lower temperature for more consistent extraction
