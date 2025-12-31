@@ -1,153 +1,88 @@
-"""
-FastAPI backend for BOQ (Bill of Quantities) Generator.
-Handles PDF upload, AI processing, and BOQ extraction.
-"""
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from typing import Dict, Any
-import os
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import FileResponse
+from typing import List
+from openai_service import OpenAIService  # Import the OpenAI service for BoQ extraction
+from pdf_generator import generate_boq_pdf
+from regulation_validator import validate_boq
+from PyPDF2 import PdfReader
 
-from config import settings
-from pdf_processor import pdf_processor
-from openai_service import openai_service
+# ** Initialize OpenAI Service with Your API Key **
+# Replace "your-api-key-here" with your actual OpenAI API key
+openai_service = OpenAIService(api_key="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")  
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="BOQ Generator API",
-    description="API for extracting Bill of Quantities from CAD-generated PDF plans",
-    version="1.0.0"
-)
-
-# Configure CORS to allow frontend communication
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Initialize FastAPI
+app = FastAPI()
 
 
 @app.get("/")
 async def root():
-    """Root endpoint - API health check."""
-    return {
-        "message": "BOQ Generator API is running",
-        "version": "1.0.0",
-        "status": "healthy",
-        "mock_mode": settings.USE_MOCK_AI or not settings.has_openai_key
-    }
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "environment": settings.ENVIRONMENT,
-        "openai_configured": settings.has_openai_key,
-        "mock_mode": settings.USE_MOCK_AI or not settings.has_openai_key
-    }
-
-
-@app.post("/api/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...)) -> JSONResponse:
     """
-    Upload a PDF file and extract Bill of Quantities using AI.
-    
+    API Health Check
+    """
+    return {"message": "Welcome to the BoQ Generator API!"}
+
+
+@app.post("/api/upload-pdfs")
+async def upload_pdfs(files: List[UploadFile] = File(...)):
+    """
+    Extract BoQ data from uploaded PDFs and generate PDF reports.
+
     Args:
-        file: Uploaded PDF file
-        
+        files: A list of uploaded PDF files.
+
     Returns:
-        JSON response containing extracted BOQ data
-        
-    Raises:
-        HTTPException: If file validation or processing fails
+        JSON response including BoQ data for each file or error details
     """
-    try:
-        # Validate file extension
-        if not file.filename.lower().endswith('.pdf'):
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid file type. Only PDF files are allowed."
-            )
-        
-        # Read file content
-        file_content = await file.read()
-        
-        # Check file size
-        if len(file_content) > settings.MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File size exceeds maximum allowed size of {settings.MAX_FILE_SIZE / (1024*1024):.1f}MB"
-            )
-        
-        # Validate PDF format
-        if not pdf_processor.validate_pdf(file_content):
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid PDF file. The file may be corrupted or not a valid PDF."
-            )
-        
-        # Extract text from PDF
-        try:
-            pdf_text = pdf_processor.extract_text_from_pdf(file_content)
-        except Exception as e:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Failed to extract text from PDF: {str(e)}"
-            )
-        
-        # Process with OpenAI to extract BOQ
-        try:
-            boq_data = openai_service.extract_boq_from_pdf(pdf_text, file.filename)
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to process PDF with AI: {str(e)}"
-            )
-        
-        # Return the extracted BOQ data
-        return JSONResponse(
-            status_code=200,
-            content={
-                "success": True,
-                "message": "BOQ extracted successfully",
-                "data": boq_data
-            }
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"An unexpected error occurred: {str(e)}"
-        )
-    finally:
-        # Ensure file is closed and not stored (privacy best practice)
-        await file.close()
+    results = []  # To store processing results for each file
+    generated_pdfs = []  # To hold paths to generated BoQ PDFs
 
+    for file in files:
+        try:
+            # Extract file name
+            filename = file.filename
 
-@app.get("/api/test")
-async def test_endpoint():
-    """Test endpoint to verify API is working."""
+            # Extract text from the PDF using PyPDF2
+            pdf_reader = PdfReader(file.file)
+            extracted_text = ""
+            for page in pdf_reader.pages:
+                extracted_text += page.extract_text()
+
+            # Handle cases where no text is extractable
+            if not extracted_text.strip():
+                raise ValueError(f"No readable text found in {filename}. It may be a scanned or image-based file.")
+
+            # Generate BoQ using OpenAI
+            boq_data = openai_service.extract_boq_from_pdf(extracted_text, filename)
+
+            # Validate the extracted BoQ data against UK Building Regulations
+            compliance_results = validate_boq(boq_data)
+            boq_data["compliance"] = compliance_results
+
+            # Generate a BoQ PDF report
+            generated_pdf_path = generate_boq_pdf(filename, boq_data)
+            generated_pdfs.append(generated_pdf_path)
+
+            # Append successful processing results
+            results.append({
+                "filename": filename,
+                "boq": boq_data,
+                "generated_pdf": generated_pdf_path
+            })
+
+        except Exception as e:
+            # Append error for this specific file
+            results.append({
+                "filename": filename,
+                "error": f"Error processing file: {str(e)}"
+            })
+
+    # Single file: Return the BoQ as a downloadable PDF file
+    if len(generated_pdfs) == 1:
+        return FileResponse(generated_pdfs[0], media_type='application/pdf', filename="BoQ_Report.pdf")
+
+    # Multiple files: Provide results as a JSON response
     return {
-        "message": "Test endpoint working",
-        "mock_mode": settings.USE_MOCK_AI or not settings.has_openai_key,
-        "sample_boq": openai_service._mock_boq_extraction("test.pdf")
+        "success": True,
+        "message": "BoQ extraction completed.",
+        "data": results
     }
-
-
-if __name__ == "__main__":
-    import uvicorn
-    print(f"🚀 Starting BOQ Generator API on {settings.HOST}:{settings.PORT}")
-    print(f"📝 Environment: {settings.ENVIRONMENT}")
-    print(f"🤖 Mock Mode: {settings.USE_MOCK_AI or not settings.has_openai_key}")
-    uvicorn.run(
-        "main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.ENVIRONMENT == "development"
-    )
