@@ -9,11 +9,23 @@ backend/venv/
 backend/ENV/
 backend/.env
 
-# Node
+# Node.js
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.env
 frontend/.env.local
+
+# Uploads
+uploads/
+
+# Logs
+*.log
+
+# Temp Files
+*.tmp
+temp/
+tmp/
 
 # IDE
 .vscode/
@@ -26,14 +38,6 @@ frontend/.env.local
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-
 # Testing
 .pytest_cache/
 .coverage
-
-# Temporary
-*.tmp
-temp/
-tmp/

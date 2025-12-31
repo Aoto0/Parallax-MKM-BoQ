@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallax MKM - Building Plan BoQ Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏗️ Parallax MKM - BoQ Generator</h1>
+            <p class="subtitle">AI-Powered Bill of Quantities from Building Plans</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <section class="upload-section card">
+                <h2>Upload Building Plan</h2>
+                <p class="section-desc">Upload your building plan (PDF, JPEG, or PNG) for AI analysis</p>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">Drag and drop your building plan here</p>
+                    <p class="upload-subtext">or</p>
+                    <button class="btn btn-primary" id="selectFileBtn">Select File</button>
+                    <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" hidden>
+                    <p class="file-types">Supported: PDF, JPEG, PNG (Max 10MB)</p>
+                </div>
+
+                <div id="fileInfo" class="file-info" style="display: none;">
+                    <div class="file-details">
+                        <span class="file-name" id="fileName"></span>
+                        <span class="file-size" id="fileSize"></span>
+                    </div>
+                    <button class="btn btn-secondary" id="removeFileBtn">Remove</button>
+                </div>
+
+                <button class="btn btn-success btn-large" id="analyzeBtn" style="display: none;">
+                    <span id="analyzeBtnText">Analyze Building Plan</span>
+                    <span class="spinner" id="spinner" style="display: none;"></span>
+                </button>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="card">
+                    <div class="results-header">
+                        <h2>Bill of Quantities</h2>
+                        <div class="results-actions">
+                            <button class="btn btn-outline" id="downloadBtn">📥 Download PDF</button>
+                            <button class="btn btn-outline" id="printBtn">🖨️ Print</button>
+                        </div>
+                    </div>
+
+                    <!-- Project Info -->
+                    <div class="project-info" id="projectInfo"></div>
+
+                    <!-- BoQ Items -->
+                    <div class="boq-items" id="boqItems"></div>
+
+                    <!-- Summary -->
+                    <div class="boq-summary" id="boqSummary"></div>
+
+                    <!-- Notes -->
+                    <div class="boq-notes" id="boqNotes"></div>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section card" id="errorSection" style="display: none;">
+                <div class="error-icon">⚠️</div>
+                <h3>Error</h3>
+                <p id="errorMessage"></p>
+                <button class="btn btn-secondary" id="retryBtn">Try Again</button>
+            </section>
+        </main>
+
+        <footer>
+            <p>Powered by AI | Parallax MKM BoQ Generator</p>
+            <p class="footer-note">Configure AI_API_KEY in .env for real-time analysis</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
